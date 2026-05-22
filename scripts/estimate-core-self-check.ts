@@ -5,6 +5,7 @@ import {
   calculateVatIncluded,
   formatMoney,
   multiplyMoney,
+  parseEstimateText,
   parseMoneyToKopecks,
   runEstimateSelfChecks,
 } from "../src/lib/estimate-core";
@@ -65,5 +66,15 @@ assertEqual(estimate.grandTotalKopecks, 1_882_320, "normative grand total");
 
 const checks = runEstimateSelfChecks();
 assertEqual(checks.ok, true, "runtime self-check");
+
+const parsedText = parseEstimateText(`Работа;Ед.;Кол.;Цена;Сумма
+Демонтаж;м2;12,5;800;10000
+Грунтовка;м2;10;120;1100`);
+
+assertEqual(parsedText.lines.length, 2, "parsed estimate rows");
+assertEqual(parsedText.lines[0].quantity, 12.5, "parsed quantity with comma");
+assertEqual(parsedText.lines[0].unitPriceKopecks, 80_000, "parsed unit price");
+assertEqual(parsedText.lines[0].declaredTotalKopecks, 1_000_000, "parsed declared total");
+assertEqual(parsedText.issues.some((issue) => issue.code === "import-total-mismatch-2"), true, "import mismatch warning");
 
 console.log("estimate-core self-check passed");

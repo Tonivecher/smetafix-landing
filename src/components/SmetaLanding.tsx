@@ -15,10 +15,14 @@ import {
   calculateEstimate,
   formatMoney,
   officialFormatLabels,
+  parseEstimateRows,
+  parseEstimateText,
   parseMoneyToKopecks,
   runEstimateSelfChecks,
   strictRfFormLabels,
   type EstimateInput,
+  type EstimateIssue,
+  type EstimateLineInput,
   type EstimateMode,
   type OfficialFormat,
   type StrictRfForm,
@@ -26,7 +30,12 @@ import {
 } from "@/lib/estimate-core";
 
 type Variant = "awwwards" | "minimal";
-type MockState = "empty" | "loading" | "success" | "error" | "disabled";
+type UploadState = "empty" | "loading" | "success" | "error";
+type ImportedEstimate = {
+  fileName: string;
+  lines: EstimateLineInput[];
+  issues: EstimateIssue[];
+};
 
 function Mark({ className = "" }: { className?: string }) {
   return (
@@ -63,7 +72,7 @@ function Header({ variant }: { variant: Variant }) {
         }`}
         aria-label="Основная навигация"
       >
-        <Link href="/awwwards" className="flex items-center gap-3 rounded-full focus:outline-none focus:ring-2 focus:ring-[#b98142]">
+        <Link href="/" className="flex items-center gap-3 rounded-full focus:outline-none focus:ring-2 focus:ring-[#b98142]">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[#b98142] text-sm font-semibold text-[#1f211d]">
             SF
           </span>
@@ -74,14 +83,14 @@ function Header({ variant }: { variant: Variant }) {
           <a href="#pricing" className="rounded-full focus:outline-none focus:ring-2 focus:ring-[#b98142]">Тарифы</a>
           <a href="#faq" className="rounded-full focus:outline-none focus:ring-2 focus:ring-[#b98142]">Вопросы</a>
         </div>
-        <Link
-          href={variant === "awwwards" ? "/minimal" : "/awwwards"}
+        <a
+          href="#calculator"
           className={`rounded-full px-4 py-2 text-sm font-medium transition active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#b98142] ${
             dark ? "bg-[#f7eddc] text-[#1f211d]" : "bg-[#27231d] text-[#fbf7ec]"
           }`}
         >
-          {variant === "awwwards" ? "Minimal" : "Awwwards"}
-        </Link>
+          Проверить
+        </a>
       </nav>
     </header>
   );
@@ -152,20 +161,70 @@ function EstimateTablePreview({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function FileUploadMock({ variant }: { variant: Variant }) {
-  const [state, setState] = useState<MockState>("empty");
+async function parseEstimateFile(file: File) {
+  const fileName = file.name.toLowerCase();
 
-  function runCheck() {
-    if (state === "disabled" || state === "loading") return;
-    setState("loading");
-    window.setTimeout(() => setState("success"), 950);
+  if (fileName.endsWith(".csv") || fileName.endsWith(".tsv") || fileName.endsWith(".txt")) {
+    return parseEstimateText(await file.text());
   }
 
+  if (fileName.endsWith(".xlsx")) {
+    const { readSheet } = await import("read-excel-file/browser");
+    const rows = await readSheet(file);
+
+    return parseEstimateRows(rows);
+  }
+
+  return {
+    lines: [],
+    issues: [
+      {
+        code: "unsupported-file-type",
+        severity: "error" as const,
+        message: "Поддерживаются XLSX, CSV, TSV и TXT. Старый XLS лучше сохранить как XLSX.",
+      },
+    ],
+  };
+}
+
+function FileUploadChecker({
+  variant,
+  importedEstimate,
+  onImported,
+}: {
+  variant: Variant;
+  importedEstimate: ImportedEstimate | null;
+  onImported: (estimate: ImportedEstimate | null) => void;
+}) {
+  const [state, setState] = useState<UploadState>("empty");
+  const [error, setError] = useState("");
   const dark = variant === "awwwards";
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+
+    setState("loading");
+    setError("");
+
+    try {
+      const result = await parseEstimateFile(file);
+      onImported({
+        fileName: file.name,
+        lines: result.lines,
+        issues: result.issues,
+      });
+      setState(result.lines.length > 0 ? "success" : "error");
+      setError(result.lines.length > 0 ? "" : result.issues[0]?.message ?? "Файл не распознан.");
+    } catch {
+      onImported(null);
+      setState("error");
+      setError("Не удалось прочитать файл. Попробуйте XLSX, CSV или TSV с колонками работа, количество, цена, сумма.");
+    }
+  }
 
   return (
     <section
-      aria-label="Демонстрация загрузки сметы"
+      aria-label="Загрузка и проверка сметы"
       className={`relative overflow-hidden rounded-[2rem] border p-5 md:p-6 ${
         dark
           ? "border-white/10 bg-[#292a24] text-[#f7eddc] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
@@ -179,32 +238,46 @@ function FileUploadMock({ variant }: { variant: Variant }) {
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Загрузка и проверка</h2>
             <p className={`mt-1 text-sm ${dark ? "text-[#d8c9b0]" : "text-[#776d5f]"}`}>
-              Фронтенд показывает будущую механику без реальной обработки файла.
+              Загрузите свою смету, сервис прочитает строки и проверит суммы.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setState(state === "disabled" ? "empty" : "disabled")}
-            className={`rounded-full border px-3 py-1.5 text-xs transition active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#b98142] ${
-              dark ? "border-white/12 hover:bg-white/8" : "border-[#27231d]/12 hover:bg-[#f4efe4]"
-            }`}
-          >
-            {state === "disabled" ? "Включить" : "Отключить"}
-          </button>
+          {importedEstimate && (
+            <button
+              type="button"
+              onClick={() => {
+                onImported(null);
+                setState("empty");
+              }}
+              className={`rounded-full border px-3 py-1.5 text-xs transition active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#b98142] ${
+                dark ? "border-white/12 hover:bg-white/8" : "border-[#27231d]/12 hover:bg-[#f4efe4]"
+              }`}
+            >
+              Сбросить
+            </button>
+          )}
         </div>
 
-        <div className={`rounded-[1.5rem] border border-dashed p-5 ${dark ? "border-white/16 bg-white/[0.03]" : "border-[#27231d]/16 bg-[#f8f1e4]"}`}>
+        <label
+          className={`block cursor-pointer rounded-[1.5rem] border border-dashed p-5 transition focus-within:ring-2 focus-within:ring-[#b98142] ${
+            dark ? "border-white/16 bg-white/[0.03] hover:bg-white/[0.06]" : "border-[#27231d]/16 bg-[#f8f1e4] hover:bg-white"
+          }`}
+        >
+          <input
+            type="file"
+            accept=".xlsx,.csv,.tsv,.txt"
+            className="sr-only"
+            onChange={(event) => void handleFile(event.target.files?.[0])}
+          />
           <p className="font-medium">
-            {state === "empty" && "Перетащите Excel-смету или выберите файл"}
-            {state === "loading" && "Проверяем формулы, итоги и НДС"}
-            {state === "success" && "Найдены 4 замечания и подготовлен PDF"}
-            {state === "error" && "Файл повреждён или не похож на смету"}
-            {state === "disabled" && "Загрузка временно недоступна"}
+            {state === "empty" && "Выберите XLSX, CSV или TSV"}
+            {state === "loading" && "Читаем файл и проверяем строки"}
+            {state === "success" && `${importedEstimate?.fileName ?? "Смета"} загружена`}
+            {state === "error" && "Файл не удалось проверить"}
           </p>
           <p className={`mt-2 text-sm ${dark ? "text-[#d8c9b0]" : "text-[#776d5f]"}`}>
-            Поддержка XLSX, XLS и CSV. Файл можно удалить сразу после проверки.
+            Нужны колонки с работой, количеством и ценой. Если есть колонка суммы, сервис сверит её с количеством × ценой.
           </p>
-        </div>
+        </label>
 
         {state === "loading" ? (
           <div className="space-y-3">
@@ -214,34 +287,55 @@ function FileUploadMock({ variant }: { variant: Variant }) {
           </div>
         ) : (
           <div className="grid gap-3">
-            {(state === "success" ? errorExamples : errorExamples.slice(0, 2)).map((item) => (
-              <div
-                key={item}
-                className={`flex gap-3 rounded-2xl border p-3 text-sm ${
-                  dark ? "border-white/10 bg-black/12" : "border-[#27231d]/10 bg-white"
-                }`}
-              >
-                <Mark className="mt-0.5 h-4 w-4 shrink-0 text-[#b98142]" />
-                <span>{item}</span>
-              </div>
-            ))}
+            {importedEstimate ? (
+              <>
+                <div className={`rounded-2xl border p-3 text-sm ${dark ? "border-white/10 bg-black/12" : "border-[#27231d]/10 bg-white"}`}>
+                  <p className="font-semibold">{importedEstimate.lines.length} строк распознано</p>
+                  <p className={`mt-1 ${dark ? "text-[#d8c9b0]" : "text-[#776d5f]"}`}>
+                    Замечаний при импорте: {importedEstimate.issues.length}
+                  </p>
+                </div>
+                {importedEstimate.issues.slice(0, 2).map((item) => (
+                  <div
+                    key={item.code}
+                    className={`flex gap-3 rounded-2xl border p-3 text-sm ${
+                      dark ? "border-white/10 bg-black/12" : "border-[#27231d]/10 bg-white"
+                    }`}
+                  >
+                    <Mark className="mt-0.5 h-4 w-4 shrink-0 text-[#b98142]" />
+                    <span>{item.message}</span>
+                  </div>
+                ))}
+              </>
+            ) : (
+              errorExamples.slice(0, 2).map((item) => (
+                <div
+                  key={item}
+                  className={`flex gap-3 rounded-2xl border p-3 text-sm ${
+                    dark ? "border-white/10 bg-black/12" : "border-[#27231d]/10 bg-white"
+                  }`}
+                >
+                  <Mark className="mt-0.5 h-4 w-4 shrink-0 text-[#b98142]" />
+                  <span>{item}</span>
+                </div>
+              ))
+            )}
+            {error && (
+              <p className={`rounded-2xl border p-3 text-sm ${dark ? "border-red-300/30 bg-red-500/10 text-red-100" : "border-red-300 bg-red-50 text-red-800"}`}>
+                {error}
+              </p>
+            )}
           </div>
         )}
 
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <CTAButton tone={dark ? "light" : "dark"} onClick={runCheck}>
-            {state === "loading" ? "Проверяем" : "Проверить смету"}
-          </CTAButton>
-          <button
-            type="button"
-            onClick={() => setState("error")}
-            className={`min-h-12 rounded-full border px-6 py-3 text-sm font-semibold transition active:translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#b98142] ${
-              dark ? "border-white/14 text-[#f7eddc] hover:bg-white/8" : "border-[#27231d]/14 text-[#27231d] hover:bg-[#f4efe4]"
-            }`}
-          >
-            Показать ошибку
-          </button>
-        </div>
+        <a
+          href="#calculator"
+          className={`grid min-h-12 place-items-center rounded-full px-6 py-3 text-sm font-semibold transition active:translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#b98142] ${
+            dark ? "bg-[#fbf7ec] text-[#27231d] hover:bg-white" : "bg-[#27231d] text-[#fbf7ec] hover:bg-[#3a342b]"
+          }`}
+        >
+          Смотреть расчёт
+        </a>
       </div>
     </section>
   );
@@ -354,7 +448,11 @@ function Segment<T extends string>({
   );
 }
 
-function EstimateCalculatorPanel() {
+function EstimateCalculatorPanel({
+  importedEstimate,
+}: {
+  importedEstimate: ImportedEstimate | null;
+}) {
   const [mode, setMode] = useState<EstimateMode>("commercial");
   const [officialFormat, setOfficialFormat] = useState<OfficialFormat>("business");
   const [strictRfForm, setStrictRfForm] = useState<StrictRfForm>("localEstimate");
@@ -373,6 +471,18 @@ function EstimateCalculatorPanel() {
   const [objectType, setObjectType] = useState("Капитальный ремонт");
 
   const selfCheck = runEstimateSelfChecks();
+  const activeLines =
+    importedEstimate?.lines.length
+      ? importedEstimate.lines
+      : [
+          {
+            id: "main",
+            name: "Работы по смете",
+            unit: "м2",
+            quantity,
+            unitPriceKopecks: parseMoneyToKopecks(unitPrice),
+          },
+        ];
   const estimateInput: EstimateInput = {
     mode,
     officialFormat,
@@ -391,22 +501,15 @@ function EstimateCalculatorPanel() {
       method: "resourceIndex",
       objectType,
     },
-    lines: [
-      {
-        id: "main",
-        name: "Работы по смете",
-        unit: "м2",
-        quantity,
-        unitPriceKopecks: parseMoneyToKopecks(unitPrice),
-      },
-    ],
+    lines: activeLines,
   };
   const result = calculateEstimate(estimateInput);
-  const blockingIssues = result.issues.filter((issue) => issue.severity === "error");
-  const warnings = result.issues.filter((issue) => issue.severity !== "error");
+  const allIssues = [...(importedEstimate?.issues ?? []), ...result.issues];
+  const blockingIssues = allIssues.filter((issue) => issue.severity === "error");
+  const warnings = allIssues.filter((issue) => issue.severity !== "error");
 
   return (
-    <section id="calculator" className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-40">
+    <section id="calculator" className="mx-auto max-w-7xl px-4 py-14 md:px-8 md:py-20">
       <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
         <div className="lg:sticky lg:top-28 lg:self-start">
           <p className="font-mono text-sm uppercase tracking-[0.18em] text-[#b98142]">калькулятор проверки</p>
@@ -465,9 +568,38 @@ function EstimateCalculatorPanel() {
               </label>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Количество" value={quantity} onChange={setQuantity} suffix="ед." />
-              <Field label="Цена за единицу" value={unitPrice} onChange={setUnitPrice} suffix="₽" />
+            {importedEstimate ? (
+              <div className="rounded-[1.5rem] border border-[#27231d]/10 bg-white p-4">
+                <p className="text-sm font-semibold">{importedEstimate.fileName}</p>
+                <p className="mt-2 text-sm text-[#776d5f]">
+                  В расчёте используются {importedEstimate.lines.length} строк из файла. Ручные поля количества и цены скрыты до сброса файла.
+                </p>
+                <div className="mt-4 max-h-44 overflow-auto rounded-2xl border border-[#27231d]/10">
+                  {importedEstimate.lines.slice(0, 8).map((line) => (
+                    <div key={line.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-[#27231d]/10 px-4 py-3 text-sm last:border-b-0">
+                      <span className="min-w-0 truncate">{line.name}</span>
+                      <span className="font-mono">{formatMoney(Math.round(line.quantity * line.unitPriceKopecks))}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Количество" value={quantity} onChange={setQuantity} suffix="ед." />
+                <Field label="Цена за единицу" value={unitPrice} onChange={setUnitPrice} suffix="₽" />
+                {mode === "commercial" && (
+                  <>
+                    <Field label="Скидка" value={discountPercent} onChange={setDiscountPercent} suffix="%" />
+                    <Field label="Наценка" value={markupPercent} onChange={setMarkupPercent} suffix="%" />
+                  </>
+                )}
+                <Field label="Коэффициент" value={coefficient} onChange={setCoefficient} step={0.01} />
+                <Field label="НДС" value={vatRate} onChange={setVatRate} suffix="%" />
+              </div>
+            )}
+
+            {importedEstimate && (
+              <div className="grid gap-3 sm:grid-cols-2">
               {mode === "commercial" && (
                 <>
                   <Field label="Скидка" value={discountPercent} onChange={setDiscountPercent} suffix="%" />
@@ -477,6 +609,7 @@ function EstimateCalculatorPanel() {
               <Field label="Коэффициент" value={coefficient} onChange={setCoefficient} step={0.01} />
               <Field label="НДС" value={vatRate} onChange={setVatRate} suffix="%" />
             </div>
+            )}
 
             <div>
               <p className="mb-3 text-sm font-semibold">Режим НДС</p>
@@ -526,7 +659,7 @@ function EstimateCalculatorPanel() {
               <div className="sm:col-span-2 grid gap-2 border-t border-white/10 pt-4 text-sm text-[#d8c9b0] sm:grid-cols-3">
                 <span>Подытог: {formatMoney(result.subtotalKopecks)}</span>
                 <span>НДС: {formatMoney(result.vat.vatKopecks)}</span>
-                <span>Замечаний: {result.issues.length}</span>
+                <span>Замечаний: {allIssues.length}</span>
               </div>
             </div>
 
@@ -569,21 +702,20 @@ function Footer({ dark = false }: { dark?: boolean }) {
     <footer className={`border-t px-4 py-10 md:px-8 ${dark ? "border-white/10" : "border-[#27231d]/10"}`}>
       <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm md:flex-row md:items-center md:justify-between">
         <p>SmetaFix — техническая проверка смет, не официальная экспертиза.</p>
-        <div className="flex gap-4">
-          <Link href="/awwwards" className="focus:outline-none focus:ring-2 focus:ring-[#b98142]">Awwwards</Link>
-          <Link href="/minimal" className="focus:outline-none focus:ring-2 focus:ring-[#b98142]">Minimal</Link>
-        </div>
+        <a href="#calculator" className="focus:outline-none focus:ring-2 focus:ring-[#b98142]">Проверить смету</a>
       </div>
     </footer>
   );
 }
 
 export function SmetaAwwwards() {
+  const [importedEstimate, setImportedEstimate] = useState<ImportedEstimate | null>(null);
+
   return (
     <main className="w-full max-w-full overflow-x-hidden bg-[#1f211d] text-[#f7eddc]">
       <div className="grain" />
       <Header variant="awwwards" />
-      <section className="paper-grid relative min-h-[100dvh] px-4 pb-20 pt-32 md:px-8 md:pt-40">
+      <section className="paper-grid relative px-4 pb-14 pt-32 md:px-8 md:pb-20 md:pt-36">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_26%,rgba(185,129,66,0.28),transparent_34%),linear-gradient(180deg,rgba(31,33,29,0.34),#1f211d_82%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
           <div>
@@ -594,21 +726,27 @@ export function SmetaAwwwards() {
               Загрузите смету в Excel — SmetaFix проверит формулы, итоги, НДС и подготовит понятную клиентскую версию в PDF.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <CTAButton tone="light">Проверить смету</CTAButton>
+              <a href="#calculator" className="grid min-h-12 place-items-center rounded-full bg-[#fbf7ec] px-6 py-3 text-sm font-semibold text-[#27231d] transition hover:bg-white active:translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#b98142]">
+                Проверить смету
+              </a>
               <a href="#example" className="grid min-h-12 place-items-center rounded-full border border-white/14 px-6 py-3 text-sm font-semibold transition hover:bg-white/8 active:translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#b98142]">
                 Посмотреть пример отчёта
               </a>
             </div>
           </div>
           <div className="animate-soft-float">
-            <FileUploadMock variant="awwwards" />
+            <FileUploadChecker
+              variant="awwwards"
+              importedEstimate={importedEstimate}
+              onImported={setImportedEstimate}
+            />
           </div>
         </div>
       </section>
 
-      <EstimateCalculatorPanel />
+      <EstimateCalculatorPanel importedEstimate={importedEstimate} />
 
-      <section className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-40">
+      <section className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-24">
         <div className="grid-flow-dense grid gap-4 md:grid-cols-6">
           <article className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-8 md:col-span-4">
             <h2 className="max-w-4xl text-3xl font-semibold tracking-tight md:text-5xl">Сервис ловит ошибки, которые обычно замечают уже после отправки клиенту</h2>
@@ -673,6 +811,8 @@ export function SmetaAwwwards() {
 }
 
 export function SmetaMinimal() {
+  const [importedEstimate, setImportedEstimate] = useState<ImportedEstimate | null>(null);
+
   return (
     <main className="w-full max-w-full overflow-x-hidden bg-[#f4efe4] text-[#27231d]">
       <Header variant="minimal" />
@@ -692,7 +832,11 @@ export function SmetaMinimal() {
               </a>
             </div>
           </div>
-          <FileUploadMock variant="minimal" />
+          <FileUploadChecker
+            variant="minimal"
+            importedEstimate={importedEstimate}
+            onImported={setImportedEstimate}
+          />
         </div>
       </section>
 

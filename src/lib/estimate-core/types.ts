@@ -27,6 +27,7 @@ export type EstimateLineInput = {
   unit: string;
   quantity: number;
   unitPriceKopecks: number;
+  declaredTotalKopecks?: number;
 };
 
 export type EstimateMetadata = {
@@ -91,4 +92,9 @@ export type SelfCheckResult = {
     expected: string;
     actual: string;
   }>;
+};
+
+export type ImportResult = {
+  lines: EstimateLineInput[];
+  issues: EstimateIssue[];
 };
