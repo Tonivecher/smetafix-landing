@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:estimate-core": "tsc --outDir .tmp/estimate-core-check --module commonjs --moduleResolution node --target ES2020 --esModuleInterop --noEmit false scripts/estimate-core-self-check.ts src/lib/estimate-core/*.ts && node .tmp/estimate-core-check/scripts/estimate-core-self-check.js"
   },
   "dependencies": {
     "next": "16.2.6",

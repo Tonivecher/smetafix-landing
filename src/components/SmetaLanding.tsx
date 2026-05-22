@@ -11,6 +11,19 @@ import {
   problems,
   workflow,
 } from "@/lib/content";
+import {
+  calculateEstimate,
+  formatMoney,
+  officialFormatLabels,
+  parseMoneyToKopecks,
+  runEstimateSelfChecks,
+  strictRfFormLabels,
+  type EstimateInput,
+  type EstimateMode,
+  type OfficialFormat,
+  type StrictRfForm,
+  type VatMode,
+} from "@/lib/estimate-core";
 
 type Variant = "awwwards" | "minimal";
 type MockState = "empty" | "loading" | "success" | "error" | "disabled";
@@ -279,6 +292,259 @@ function Pricing({ dark = false }: { dark?: boolean }) {
   );
 }
 
+function Field({
+  label,
+  value,
+  onChange,
+  suffix,
+  min = 0,
+  step = 0.01,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  suffix?: string;
+  min?: number;
+  step?: number;
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">{label}</span>
+      <span className="mt-2 flex min-h-12 items-center rounded-2xl border border-[#27231d]/10 bg-white px-4 text-[#27231d]">
+        <input
+          type="number"
+          min={min}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="w-full bg-transparent text-base font-semibold outline-none"
+        />
+        {suffix && <span className="ml-2 text-sm text-[#776d5f]">{suffix}</span>}
+      </span>
+    </label>
+  );
+}
+
+function Segment<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: Array<[T, string]>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {options.map(([option, label]) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          className={`min-h-11 rounded-2xl border px-4 py-2 text-left text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#b98142] ${
+            value === option
+              ? "border-[#b98142] bg-[#b98142] text-[#1f211d]"
+              : "border-[#27231d]/10 bg-white text-[#27231d] hover:bg-[#f7eddc]"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EstimateCalculatorPanel() {
+  const [mode, setMode] = useState<EstimateMode>("commercial");
+  const [officialFormat, setOfficialFormat] = useState<OfficialFormat>("business");
+  const [strictRfForm, setStrictRfForm] = useState<StrictRfForm>("localEstimate");
+  const [vatMode, setVatMode] = useState<VatMode>("excluded");
+  const [vatRate, setVatRate] = useState(20);
+  const [quantity, setQuantity] = useState(42);
+  const [unitPrice, setUnitPrice] = useState(1350);
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [markupPercent, setMarkupPercent] = useState(12);
+  const [coefficient, setCoefficient] = useState(1);
+  const [overheadPercent, setOverheadPercent] = useState(16);
+  const [estimatedProfitPercent, setEstimatedProfitPercent] = useState(8);
+  const [indexationCoefficient, setIndexationCoefficient] = useState(1.1);
+  const [region, setRegion] = useState("Москва");
+  const [priceLevel, setPriceLevel] = useState("Текущий уровень цен");
+  const [objectType, setObjectType] = useState("Капитальный ремонт");
+
+  const selfCheck = runEstimateSelfChecks();
+  const estimateInput: EstimateInput = {
+    mode,
+    officialFormat,
+    strictRfForm: officialFormat === "strictRf" ? strictRfForm : undefined,
+    vatMode,
+    vatRate,
+    discountPercent,
+    markupPercent,
+    coefficient,
+    overheadPercent,
+    estimatedProfitPercent,
+    indexationCoefficient,
+    metadata: {
+      region,
+      priceLevel,
+      method: "resourceIndex",
+      objectType,
+    },
+    lines: [
+      {
+        id: "main",
+        name: "Работы по смете",
+        unit: "м2",
+        quantity,
+        unitPriceKopecks: parseMoneyToKopecks(unitPrice),
+      },
+    ],
+  };
+  const result = calculateEstimate(estimateInput);
+  const blockingIssues = result.issues.filter((issue) => issue.severity === "error");
+  const warnings = result.issues.filter((issue) => issue.severity !== "error");
+
+  return (
+    <section id="calculator" className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-40">
+      <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <p className="font-mono text-sm uppercase tracking-[0.18em] text-[#b98142]">калькулятор проверки</p>
+          <h2 className="mt-5 text-3xl font-semibold tracking-tight md:text-5xl">
+            Сервис считает смету и сразу показывает, готова ли она к нужному формату
+          </h2>
+          <p className="mt-5 max-w-xl leading-7 text-[#d8c9b0]">
+            Локальный MVP проверяет арифметику, НДС, коэффициенты, накладные расходы, сметную прибыль и готовность данных к строгому профилю РФ.
+          </p>
+          <div className={`mt-6 rounded-2xl border p-4 text-sm ${selfCheck.ok ? "border-[#b98142]/30 bg-[#b98142]/10 text-[#f7eddc]" : "border-red-400/40 bg-red-500/10 text-red-100"}`}>
+            {selfCheck.ok
+              ? "Самопроверка расчётного ядра пройдена."
+              : "Самопроверка расчётного ядра не пройдена. Итоги требуют проверки."}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-[#f7eddc] p-5 text-[#27231d] shadow-[0_30px_90px_-60px_rgba(0,0,0,0.6)] md:p-7">
+          <div className="grid gap-5">
+            <div>
+              <p className="mb-3 text-sm font-semibold">Тип сметы</p>
+              <Segment
+                value={mode}
+                onChange={setMode}
+                options={[
+                  ["commercial", "Коммерческая"],
+                  ["russianNormative", "Нормативная РФ"],
+                ]}
+              />
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-semibold">Нужен официальный формат?</p>
+              <Segment
+                value={officialFormat}
+                onChange={setOfficialFormat}
+                options={[
+                  ["none", officialFormatLabels.none],
+                  ["business", officialFormatLabels.business],
+                  ["strictRf", officialFormatLabels.strictRf],
+                ]}
+              />
+            </div>
+
+            {officialFormat === "strictRf" && (
+              <label className="block">
+                <span className="text-sm font-semibold">Форма строгого профиля РФ</span>
+                <select
+                  value={strictRfForm}
+                  onChange={(event) => setStrictRfForm(event.target.value as StrictRfForm)}
+                  className="mt-3 min-h-12 w-full rounded-2xl border border-[#27231d]/10 bg-white px-4 font-semibold outline-none focus:ring-2 focus:ring-[#b98142]"
+                >
+                  {Object.entries(strictRfFormLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Количество" value={quantity} onChange={setQuantity} suffix="ед." />
+              <Field label="Цена за единицу" value={unitPrice} onChange={setUnitPrice} suffix="₽" />
+              {mode === "commercial" && (
+                <>
+                  <Field label="Скидка" value={discountPercent} onChange={setDiscountPercent} suffix="%" />
+                  <Field label="Наценка" value={markupPercent} onChange={setMarkupPercent} suffix="%" />
+                </>
+              )}
+              <Field label="Коэффициент" value={coefficient} onChange={setCoefficient} step={0.01} />
+              <Field label="НДС" value={vatRate} onChange={setVatRate} suffix="%" />
+            </div>
+
+            <div>
+              <p className="mb-3 text-sm font-semibold">Режим НДС</p>
+              <Segment
+                value={vatMode}
+                onChange={setVatMode}
+                options={[
+                  ["excluded", "НДС сверху"],
+                  ["included", "НДС внутри суммы"],
+                  ["none", "Без НДС"],
+                ]}
+              />
+            </div>
+
+            {(mode === "russianNormative" || officialFormat === "strictRf") && (
+              <div className="rounded-[1.5rem] border border-[#27231d]/10 bg-white p-4">
+                <p className="text-sm font-semibold">Профиль нормативной проверки РФ</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Field label="Накладные расходы" value={overheadPercent} onChange={setOverheadPercent} suffix="%" />
+                  <Field label="Сметная прибыль" value={estimatedProfitPercent} onChange={setEstimatedProfitPercent} suffix="%" />
+                  <Field label="Индекс пересчёта" value={indexationCoefficient} onChange={setIndexationCoefficient} step={0.01} />
+                  <label className="block">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">Регион</span>
+                    <input value={region} onChange={(event) => setRegion(event.target.value)} className="mt-2 min-h-12 w-full rounded-2xl border border-[#27231d]/10 px-4 font-semibold outline-none focus:ring-2 focus:ring-[#b98142]" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">Уровень цен</span>
+                    <input value={priceLevel} onChange={(event) => setPriceLevel(event.target.value)} className="mt-2 min-h-12 w-full rounded-2xl border border-[#27231d]/10 px-4 font-semibold outline-none focus:ring-2 focus:ring-[#b98142]" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">Тип объекта</span>
+                    <input value={objectType} onChange={(event) => setObjectType(event.target.value)} className="mt-2 min-h-12 w-full rounded-2xl border border-[#27231d]/10 px-4 font-semibold outline-none focus:ring-2 focus:ring-[#b98142]" />
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-3 rounded-[1.5rem] bg-[#27231d] p-5 text-[#f7eddc] sm:grid-cols-2">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-[#d8c9b0]">До НДС</p>
+                <p className="mt-2 text-2xl font-semibold">{formatMoney(result.beforeVatKopecks)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-[#d8c9b0]">Итого</p>
+                <p className="mt-2 text-2xl font-semibold text-[#b98142]">{formatMoney(result.grandTotalKopecks)}</p>
+              </div>
+              <div className="sm:col-span-2 grid gap-2 border-t border-white/10 pt-4 text-sm text-[#d8c9b0] sm:grid-cols-3">
+                <span>Подытог: {formatMoney(result.subtotalKopecks)}</span>
+                <span>НДС: {formatMoney(result.vat.vatKopecks)}</span>
+                <span>Замечаний: {result.issues.length}</span>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              {blockingIssues.map((issue) => (
+                <p key={issue.code} className="rounded-2xl border border-red-400/30 bg-red-50 px-4 py-3 text-sm text-red-800">{issue.message}</p>
+              ))}
+              {warnings.slice(0, 4).map((issue) => (
+                <p key={issue.code} className="rounded-2xl border border-[#b98142]/30 bg-[#fff7e6] px-4 py-3 text-sm text-[#5a4127]">{issue.message}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function FAQ({ dark = false }: { dark?: boolean }) {
   return (
     <section id="faq" className="mx-auto max-w-5xl px-4 py-24 md:px-8 md:py-32">
@@ -339,6 +605,8 @@ export function SmetaAwwwards() {
           </div>
         </div>
       </section>
+
+      <EstimateCalculatorPanel />
 
       <section className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-40">
         <div className="grid-flow-dense grid gap-4 md:grid-cols-6">
