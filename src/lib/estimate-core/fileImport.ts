@@ -1,6 +1,6 @@
 import { calculateLineTotal } from "./calculators";
 import { parseMoneyToKopecks } from "./money";
-import type { EstimateIssue, EstimateLineInput, ImportResult } from "./types";
+import type { DifferenceSeverity, EstimateIssue, ImportResult, ImportedEstimateLine } from "./types";
 
 type ColumnMap = {
   name: number;
@@ -81,6 +81,20 @@ function detectColumnMap(rows: unknown[][]): { map: ColumnMap; startIndex: numbe
   return null;
 }
 
+function getDifferenceSeverity(differenceKopecks: number): DifferenceSeverity {
+  const absoluteDifference = Math.abs(differenceKopecks);
+
+  if (absoluteDifference > 100_000) {
+    return "critical";
+  }
+
+  if (absoluteDifference > 10_000) {
+    return "material";
+  }
+
+  return "minor";
+}
+
 function fallbackColumnMap(rows: unknown[][]): { map: ColumnMap; startIndex: number } | null {
   const firstDataRow = rows.findIndex((row) => row.some((cell) => parseNumber(cell) > 0));
 
@@ -117,9 +131,10 @@ export function parseEstimateRows(rows: unknown[][]): ImportResult {
     };
   }
 
-  const lines: EstimateLineInput[] = [];
+  const lines: ImportedEstimateLine[] = [];
 
   rows.slice(detected.startIndex).forEach((row, rowIndex) => {
+    const sourceRowNumber = detected.startIndex + rowIndex + 1;
     const name = normalizeCell(row[detected.map.name]);
     const quantity = parseNumber(row[detected.map.quantity]);
     const unitPriceKopecks = parseMoneyToKopecks(normalizeCell(row[detected.map.price]));
@@ -132,28 +147,37 @@ export function parseEstimateRows(rows: unknown[][]): ImportResult {
       return;
     }
 
-    const line: EstimateLineInput = {
+    const calculatedTotalKopecks = calculateLineTotal(quantity, unitPriceKopecks);
+    const differenceKopecks =
+      declaredTotalKopecks !== undefined && declaredTotalKopecks > 0
+        ? calculatedTotalKopecks - declaredTotalKopecks
+        : undefined;
+    const differenceSeverity =
+      differenceKopecks !== undefined && Math.abs(differenceKopecks) > 100
+        ? getDifferenceSeverity(differenceKopecks)
+        : undefined;
+
+    const line: ImportedEstimateLine = {
       id: `import-${lines.length + 1}`,
       name: name || `Позиция ${lines.length + 1}`,
       unit: normalizeCell(row[detected.map.unit]) || "ед.",
       quantity,
       unitPriceKopecks,
       declaredTotalKopecks,
+      sourceRowNumber,
+      calculatedTotalKopecks,
+      differenceKopecks,
+      differenceSeverity,
     };
 
     lines.push(line);
 
-    if (declaredTotalKopecks !== undefined && declaredTotalKopecks > 0) {
-      const expected = calculateLineTotal(quantity, unitPriceKopecks);
-      const difference = Math.abs(expected - declaredTotalKopecks);
-
-      if (difference > 100) {
-        issues.push({
-          code: `import-total-mismatch-${rowIndex + 1}`,
-          severity: "warning",
-          message: `${line.name}: сумма в файле отличается от количества × цены.`,
-        });
-      }
+    if (differenceKopecks !== undefined && Math.abs(differenceKopecks) > 100) {
+      issues.push({
+        code: `import-total-mismatch-${sourceRowNumber}`,
+        severity: "warning",
+        message: `${line.name}: сумма в файле отличается от количества × цены.`,
+      });
     }
   });
 

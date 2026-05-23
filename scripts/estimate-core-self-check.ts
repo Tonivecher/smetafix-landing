@@ -1,6 +1,7 @@
 import {
   applyPercent,
   calculateEstimate,
+  buildCheckReport,
   calculateVatExcluded,
   calculateVatIncluded,
   formatMoney,
@@ -75,6 +76,39 @@ assertEqual(parsedText.lines.length, 2, "parsed estimate rows");
 assertEqual(parsedText.lines[0].quantity, 12.5, "parsed quantity with comma");
 assertEqual(parsedText.lines[0].unitPriceKopecks, 80_000, "parsed unit price");
 assertEqual(parsedText.lines[0].declaredTotalKopecks, 1_000_000, "parsed declared total");
-assertEqual(parsedText.issues.some((issue) => issue.code === "import-total-mismatch-2"), true, "import mismatch warning");
+assertEqual(parsedText.lines[0].sourceRowNumber, 2, "parsed source row number");
+assertEqual(parsedText.lines[1].calculatedTotalKopecks, 120_000, "parsed calculated total");
+assertEqual(parsedText.lines[1].differenceKopecks, 10_000, "parsed declared difference");
+assertEqual(parsedText.issues.some((issue) => issue.code === "import-total-mismatch-3"), true, "import mismatch warning");
+
+const reportEstimateInput = {
+  mode: "commercial" as const,
+  officialFormat: "business" as const,
+  vatMode: "excluded" as const,
+  vatRate: 20,
+  discountPercent: 0,
+  markupPercent: 0,
+  coefficient: 1,
+  overheadPercent: 16,
+  estimatedProfitPercent: 8,
+  indexationCoefficient: 1,
+  metadata: {},
+  lines: parsedText.lines,
+};
+const reportEstimate = calculateEstimate(reportEstimateInput);
+const report = buildCheckReport({
+  fileName: "demo.csv",
+  importResult: parsedText,
+  estimateInput: reportEstimateInput,
+  estimateResult: reportEstimate,
+});
+
+assertEqual(report.summary.fileName, "demo.csv", "report file name");
+assertEqual(report.summary.lineCount, 2, "report line count");
+assertEqual(report.summary.declaredTotalKopecks, 1_110_000, "report declared total");
+assertEqual(report.summary.calculatedTotalKopecks, 1_120_000, "report calculated total");
+assertEqual(report.summary.totalDifferenceKopecks, 10_000, "report total difference");
+assertEqual(report.findings.some((finding) => finding.type === "lineDifference"), true, "report line difference finding");
+assertEqual(report.recommendations.length > 0, true, "report recommendations");
 
 console.log("estimate-core self-check passed");

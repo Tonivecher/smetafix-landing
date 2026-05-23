@@ -4,7 +4,7 @@ Next.js landing page MVP for SmetaFix, a Russian micro-SaaS concept for checking
 
 ## Routes
 
-- `/` redirects to `/awwwards`
+- `/` contains the main SmetaFix landing with upload, calculator and check report
 - `/awwwards` contains the creative editorial variant
 - `/minimal` contains the calm workspace variant
 
@@ -22,4 +22,4 @@ npm run lint
 npm run build
 ```
 
-The current MVP mocks file upload and processing states in the frontend. It does not perform real Excel or PDF processing.
+The current MVP reads XLSX, CSV, TSV and TXT files in the browser, checks estimate arithmetic and generates a technical report with findings, recommendations and browser print/PDF support.

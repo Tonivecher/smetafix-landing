@@ -11,7 +11,9 @@ import {
   problems,
   workflow,
 } from "@/lib/content";
+import { EstimateCheckReport } from "@/components/EstimateCheckReport";
 import {
+  buildCheckReport,
   calculateEstimate,
   formatMoney,
   officialFormatLabels,
@@ -21,9 +23,8 @@ import {
   runEstimateSelfChecks,
   strictRfFormLabels,
   type EstimateInput,
-  type EstimateIssue,
-  type EstimateLineInput,
   type EstimateMode,
+  type ImportResult,
   type OfficialFormat,
   type StrictRfForm,
   type VatMode,
@@ -31,11 +32,16 @@ import {
 
 type Variant = "awwwards" | "minimal";
 type UploadState = "empty" | "loading" | "success" | "error";
-type ImportedEstimate = {
+type ImportedEstimate = ImportResult & {
   fileName: string;
-  lines: EstimateLineInput[];
-  issues: EstimateIssue[];
 };
+
+const demoEstimateText = `Работа;Ед.;Кол.;Цена;Сумма
+Демонтаж старого покрытия;м2;42;350;14700
+Грунтовка стен;м2;86;120;10320
+Штукатурка стен по маякам;м2;64;850;52000
+Укладка керамогранита;м2;18;1900;34200
+Монтаж розеток и выключателей;шт;32;650;20000`;
 
 function Mark({ className = "" }: { className?: string }) {
   return (
@@ -222,6 +228,17 @@ function FileUploadChecker({
     }
   }
 
+  function handleDemoCheck() {
+    const result = parseEstimateText(demoEstimateText);
+    onImported({
+      fileName: "smetafix-demo.csv",
+      lines: result.lines,
+      issues: result.issues,
+    });
+    setState("success");
+    setError("");
+  }
+
   return (
     <section
       aria-label="Загрузка и проверка сметы"
@@ -336,6 +353,15 @@ function FileUploadChecker({
         >
           Смотреть расчёт
         </a>
+        <button
+          type="button"
+          onClick={handleDemoCheck}
+          className={`min-h-12 rounded-full border px-6 py-3 text-sm font-semibold transition active:translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#b98142] ${
+            dark ? "border-white/14 text-[#f7eddc] hover:bg-white/8" : "border-[#27231d]/14 text-[#27231d] hover:bg-[#fbf7ec]"
+          }`}
+        >
+          Проверить пример
+        </button>
       </div>
     </section>
   );
@@ -504,6 +530,12 @@ function EstimateCalculatorPanel({
     lines: activeLines,
   };
   const result = calculateEstimate(estimateInput);
+  const report = buildCheckReport({
+    fileName: importedEstimate?.fileName,
+    importResult: importedEstimate,
+    estimateInput,
+    estimateResult: result,
+  });
   const allIssues = [...(importedEstimate?.issues ?? []), ...result.issues];
   const blockingIssues = allIssues.filter((issue) => issue.severity === "error");
   const warnings = allIssues.filter((issue) => issue.severity !== "error");
@@ -671,6 +703,8 @@ function EstimateCalculatorPanel({
                 <p key={issue.code} className="rounded-2xl border border-[#b98142]/30 bg-[#fff7e6] px-4 py-3 text-sm text-[#5a4127]">{issue.message}</p>
               ))}
             </div>
+
+            <EstimateCheckReport report={report} />
           </div>
         </div>
       </div>
@@ -734,7 +768,7 @@ export function SmetaAwwwards() {
               </a>
             </div>
           </div>
-          <div className="animate-soft-float">
+          <div>
             <FileUploadChecker
               variant="awwwards"
               importedEstimate={importedEstimate}

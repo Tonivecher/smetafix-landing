@@ -15,6 +15,19 @@ export type IssueSeverity = "error" | "warning" | "info";
 
 export type NormativeMethod = "baseIndex" | "resourceIndex" | "resource";
 
+export type DifferenceSeverity = "minor" | "material" | "critical";
+
+export type ReportReadinessStatus = "ready" | "needsReview" | "blocked";
+
+export type ReportFindingType =
+  | "import"
+  | "calculation"
+  | "lineDifference"
+  | "readiness"
+  | "limitation";
+
+export type ReportRecommendationTone = "primary" | "warning" | "info";
+
 export type EstimateIssue = {
   code: string;
   severity: IssueSeverity;
@@ -28,6 +41,13 @@ export type EstimateLineInput = {
   quantity: number;
   unitPriceKopecks: number;
   declaredTotalKopecks?: number;
+};
+
+export type ImportedEstimateLine = EstimateLineInput & {
+  sourceRowNumber: number;
+  calculatedTotalKopecks: number;
+  differenceKopecks?: number;
+  differenceSeverity?: DifferenceSeverity;
 };
 
 export type EstimateMetadata = {
@@ -84,6 +104,45 @@ export type EstimateResult = {
   issues: EstimateIssue[];
 };
 
+export type ReportFinding = {
+  id: string;
+  type: ReportFindingType;
+  severity: IssueSeverity | "critical";
+  title: string;
+  message: string;
+  sourceRowNumber?: number;
+  amountKopecks?: number;
+};
+
+export type ReportRecommendation = {
+  id: string;
+  tone: ReportRecommendationTone;
+  title: string;
+  message: string;
+};
+
+export type ReportSummary = {
+  fileName: string;
+  lineCount: number;
+  issueCount: number;
+  errorCount: number;
+  warningCount: number;
+  infoCount: number;
+  subtotalKopecks: number;
+  grandTotalKopecks: number;
+  declaredTotalKopecks: number;
+  calculatedTotalKopecks: number;
+  totalDifferenceKopecks: number;
+  readinessStatus: ReportReadinessStatus;
+  officialFormat: OfficialFormat;
+};
+
+export type CheckReport = {
+  summary: ReportSummary;
+  findings: ReportFinding[];
+  recommendations: ReportRecommendation[];
+};
+
 export type SelfCheckResult = {
   ok: boolean;
   checks: Array<{
@@ -95,6 +154,6 @@ export type SelfCheckResult = {
 };
 
 export type ImportResult = {
-  lines: EstimateLineInput[];
+  lines: ImportedEstimateLine[];
   issues: EstimateIssue[];
 };
