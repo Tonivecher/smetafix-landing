@@ -1,27 +1,35 @@
 "use client";
-
+ 
 import { motion } from "framer-motion";
-import { formatMoney, type CheckReport } from "@/lib/estimate-core";
-import { Printer, CheckCircle, Lightbulb } from "@phosphor-icons/react";
-
+import { formatMoney, exportCorrectedEstimate, type CheckReport, type ImportedEstimateLine } from "@/lib/estimate-core";
+import { Printer, CheckCircle, Lightbulb, FileArrowDown } from "@phosphor-icons/react";
+ 
 const statusLabels: Record<CheckReport["summary"]["readinessStatus"], string> = {
   ready: "Готово к клиентской версии",
   needsReview: "Нужна проверка",
   blocked: "Есть блокирующие замечания",
 };
-
+ 
 const statusClasses: Record<CheckReport["summary"]["readinessStatus"], string> = {
   ready: "bg-emerald-50 text-emerald-700 border-emerald-200",
   needsReview: "bg-amber-50 text-amber-700 border-amber-200",
   blocked: "bg-red-50 text-red-700 border-red-200",
 };
-
+ 
 function formatSignedMoney(value: number) {
   if (value === 0) return formatMoney(0);
   return `${value > 0 ? "+" : "-"}${formatMoney(Math.abs(value))}`;
 }
-
-export function EstimateCheckReport({ report }: { report: CheckReport }) {
+ 
+export function EstimateCheckReport({
+  report,
+  lines,
+  vatRate,
+}: {
+  report: CheckReport;
+  lines: ImportedEstimateLine[];
+  vatRate: number;
+}) {
   const visibleFindings = report.findings.slice(0, 8);
   const container = {
     hidden: { opacity: 0 },
@@ -30,12 +38,23 @@ export function EstimateCheckReport({ report }: { report: CheckReport }) {
       transition: { staggerChildren: 0.1 }
     }
   };
-
+ 
   const item = {
     hidden: { opacity: 0, y: 10 },
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
   };
 
+  const handleExportExcel = () => {
+    exportCorrectedEstimate(
+      report.summary.fileName,
+      lines,
+      report.summary.subtotalKopecks,
+      report.summary.grandTotalKopecks,
+      report.summary.grandTotalKopecks - report.summary.subtotalKopecks,
+      vatRate
+    );
+  };
+ 
   return (
     <motion.section
       layout
@@ -55,16 +74,28 @@ export function EstimateCheckReport({ report }: { report: CheckReport }) {
           <span className={`inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold ${statusClasses[report.summary.readinessStatus]}`}>
             {statusLabels[report.summary.readinessStatus]}
           </span>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            type="button"
-            onClick={() => window.print()}
-            className="no-print inline-flex h-10 items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <Printer size={18} />
-            Печать / PDF
-          </motion.button>
+          <div className="flex flex-wrap gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onClick={handleExportExcel}
+              className="no-print inline-flex h-10 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <FileArrowDown size={18} weight="bold" />
+              Исправленный Excel
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onClick={() => window.print()}
+              className="no-print inline-flex h-10 items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <Printer size={18} />
+              Печать / PDF
+            </motion.button>
+          </div>
         </div>
       </div>
 

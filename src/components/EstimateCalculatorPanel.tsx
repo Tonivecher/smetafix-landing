@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   buildCheckReport,
   calculateEstimate,
+  calculateLineTotal,
   formatMoney,
   officialFormatLabels,
   parseMoneyToKopecks,
@@ -12,6 +13,7 @@ import {
   strictRfFormLabels,
   type EstimateInput,
   type EstimateMode,
+  type ImportedEstimateLine,
   type OfficialFormat,
   type StrictRfForm,
   type VatMode,
@@ -113,7 +115,7 @@ export function EstimateCalculatorPanel({
   const [objectType, setObjectType] = useState("Капитальный ремонт");
 
   const selfCheck = runEstimateSelfChecks();
-  const activeLines = importedEstimate?.lines.length
+  const activeLines: ImportedEstimateLine[] = importedEstimate?.lines.length
     ? importedEstimate.lines
     : [
         {
@@ -122,6 +124,8 @@ export function EstimateCalculatorPanel({
           unit: "м2",
           quantity,
           unitPriceKopecks: parseMoneyToKopecks(unitPrice),
+          sourceRowNumber: 1,
+          calculatedTotalKopecks: calculateLineTotal(quantity, parseMoneyToKopecks(unitPrice)),
         },
       ];
 
@@ -390,7 +394,11 @@ export function EstimateCalculatorPanel({
               )}
             </AnimatePresence>
 
-            <EstimateCheckReport report={report} />
+            <EstimateCheckReport
+              report={report}
+              lines={activeLines}
+              vatRate={vatRate}
+            />
           </div>
         </motion.div>
       </div>
