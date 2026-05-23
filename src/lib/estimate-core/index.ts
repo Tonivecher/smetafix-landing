@@ -7,4 +7,6 @@ export * from "./standards";
 export * from "./types";
 export * from "./validators";
 export * from "./excelExport";
+export * from "./comparison";
+
 

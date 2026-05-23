@@ -157,3 +157,38 @@ export type ImportResult = {
   lines: ImportedEstimateLine[];
   issues: EstimateIssue[];
 };
+
+export type LineChangeType = "added" | "removed" | "modified" | "unchanged";
+
+export type ComparisonLineResult = {
+  id: string;
+  changeType: LineChangeType;
+  name: string;
+  unit: string;
+  originalQuantity?: number;
+  originalUnitPriceKopecks?: number;
+  originalTotalKopecks?: number;
+  revisedQuantity?: number;
+  revisedUnitPriceKopecks?: number;
+  revisedTotalKopecks?: number;
+  quantityDelta?: number;
+  unitPriceDeltaKopecks?: number;
+  totalDeltaKopecks?: number;
+  sourceRowNumber?: number;
+};
+
+export type ComparisonSummary = {
+  originalTotalKopecks: number;
+  revisedTotalKopecks: number;
+  totalDeltaKopecks: number;
+  addedLinesCount: number;
+  removedLinesCount: number;
+  modifiedLinesCount: number;
+  unchangedLinesCount: number;
+};
+
+export type ComparisonReport = {
+  summary: ComparisonSummary;
+  lines: ComparisonLineResult[];
+};
+

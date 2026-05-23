@@ -1,15 +1,28 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { FileUploadChecker } from "./FileUploadChecker";
+import { DualFileUpload } from "./DualFileUpload";
 import type { ImportedEstimate } from "./FileUploadChecker";
 
 export function Hero({
+  activeTab,
+  setActiveTab,
   importedEstimate,
   onImported,
+  origEstimate,
+  setOrigEstimate,
+  revEstimate,
+  setRevEstimate,
 }: {
+  activeTab: "audit" | "compare";
+  setActiveTab: (tab: "audit" | "compare") => void;
   importedEstimate: ImportedEstimate | null;
   onImported: (estimate: ImportedEstimate | null) => void;
+  origEstimate: ImportedEstimate | null;
+  setOrigEstimate: (estimate: ImportedEstimate | null) => void;
+  revEstimate: ImportedEstimate | null;
+  setRevEstimate: (estimate: ImportedEstimate | null) => void;
 }) {
   return (
     <section className="relative px-4 pb-14 pt-32 md:px-8 md:pb-24 md:pt-40">
@@ -25,7 +38,7 @@ export function Hero({
           transition={{ type: "spring", stiffness: 100, damping: 20 }}
           className="flex flex-col justify-center"
         >
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-600 shadow-sm">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-600 shadow-sm self-start">
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             Умная обработка смет
           </div>
@@ -33,7 +46,7 @@ export function Hero({
             Проверка Excel-смет без ручного пересчёта
           </h1>
           <p className="mt-8 max-w-xl text-lg leading-relaxed text-zinc-600">
-            Загрузите смету — сервис моментально прочитает строки, сверит суммы, НДС и покажет, где расчёт расходится с вашей таблицей. 
+            Загрузите смету для автоматического аудита расчётов или сравните две редакции сметы, чтобы моментально увидеть добавленные и изменённые позиции.
           </p>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <motion.a
@@ -44,14 +57,14 @@ export function Hero({
             >
               Начать проверку
             </motion.a>
-            <motion.a
+            <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              href="#example"
+              onClick={() => setActiveTab("compare")}
               className="inline-flex min-h-12 items-center justify-center rounded-full border border-zinc-200 bg-white px-8 py-3 text-sm font-semibold text-zinc-950 shadow-sm transition-colors hover:bg-zinc-50"
             >
-              Смотреть пример отчёта
-            </motion.a>
+              Сравнить две сметы
+            </motion.button>
           </div>
         </motion.div>
         
@@ -59,11 +72,73 @@ export function Hero({
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
+          className="flex flex-col gap-6"
         >
-          <FileUploadChecker
-            importedEstimate={importedEstimate}
-            onImported={onImported}
-          />
+          {/* Sliding Tab Switcher */}
+          <div className="flex rounded-full bg-zinc-100 p-1 w-full border border-zinc-200/50">
+            <button
+              onClick={() => setActiveTab("audit")}
+              className={`relative flex-1 rounded-full py-2.5 text-center text-xs font-semibold uppercase tracking-wider transition-colors focus:outline-none ${
+                activeTab === "audit" ? "text-zinc-950 font-bold" : "text-zinc-500 hover:text-zinc-950"
+              }`}
+            >
+              {activeTab === "audit" && (
+                <motion.div
+                  layoutId="hero-tab-bg"
+                  className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-zinc-200/40"
+                  transition={{ type: "spring", stiffness: 350, damping: 26 }}
+                />
+              )}
+              <span className="relative z-10">Проверка сметы</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("compare")}
+              className={`relative flex-1 rounded-full py-2.5 text-center text-xs font-semibold uppercase tracking-wider transition-colors focus:outline-none ${
+                activeTab === "compare" ? "text-zinc-950 font-bold" : "text-zinc-500 hover:text-zinc-950"
+              }`}
+            >
+              {activeTab === "compare" && (
+                <motion.div
+                  layoutId="hero-tab-bg"
+                  className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-zinc-200/40"
+                  transition={{ type: "spring", stiffness: 350, damping: 26 }}
+                />
+              )}
+              <span className="relative z-10">Сравнить две сметы</span>
+            </button>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {activeTab === "audit" ? (
+              <motion.div
+                key="audit-uploader"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <FileUploadChecker
+                  importedEstimate={importedEstimate}
+                  onImported={onImported}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="compare-uploader"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <DualFileUpload
+                  origEstimate={origEstimate}
+                  setOrigEstimate={setOrigEstimate}
+                  revEstimate={revEstimate}
+                  setRevEstimate={setRevEstimate}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     </section>

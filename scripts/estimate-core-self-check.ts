@@ -9,6 +9,7 @@ import {
   parseEstimateText,
   parseMoneyToKopecks,
   runEstimateSelfChecks,
+  compareEstimates,
 } from "../src/lib/estimate-core";
 
 function assertEqual<T>(actual: T, expected: T, label: string) {
@@ -111,4 +112,29 @@ assertEqual(report.summary.totalDifferenceKopecks, 10_000, "report total differe
 assertEqual(report.findings.some((finding) => finding.type === "lineDifference"), true, "report line difference finding");
 assertEqual(report.recommendations.length > 0, true, "report recommendations");
 
-console.log("estimate-core self-check passed");
+// Comparison tests
+const origParsed = parseEstimateText(`Работа;Ед.;Кол.;Цена;Сумма
+Демонтаж старого паркета;м2;10;100;1000
+Штукатурка стен по маякам;м2;12;200;2400`);
+
+const revParsed = parseEstimateText(`Работа;Ед.;Кол.;Цена;Сумма
+Демонтаж старого паркета;м2;10;120;1200
+Покраска стен водоэмульсионной краской;м2;8;150;1200`);
+
+const comparison = compareEstimates(origParsed.lines, revParsed.lines);
+
+assertEqual(comparison.summary.originalTotalKopecks, 340_000, "comparison original total");
+assertEqual(comparison.summary.revisedTotalKopecks, 240_000, "comparison revised total");
+assertEqual(comparison.summary.totalDeltaKopecks, -100_000, "comparison total delta");
+assertEqual(comparison.summary.addedLinesCount, 1, "comparison added lines count");
+assertEqual(comparison.summary.removedLinesCount, 1, "comparison removed lines count");
+assertEqual(comparison.summary.modifiedLinesCount, 1, "comparison modified lines count");
+assertEqual(comparison.summary.unchangedLinesCount, 0, "comparison unchanged lines count");
+
+assertEqual(comparison.lines.length, 3, "comparison lines length");
+assertEqual(comparison.lines.find(l => l.name.includes("Демонтаж"))?.changeType, "modified", "comparison line modified");
+assertEqual(comparison.lines.find(l => l.name.includes("Штукатурка"))?.changeType, "removed", "comparison line removed");
+assertEqual(comparison.lines.find(l => l.name.includes("Покраска"))?.changeType, "added", "comparison line added");
+
+console.log("estimate-core self-check and comparison tests passed");
+
