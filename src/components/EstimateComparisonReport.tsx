@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { formatMoney, type ComparisonReport } from "@/lib/estimate-core";
-import { ArrowRight, Trash } from "@phosphor-icons/react";
+import { ArrowRight, Trash, FilePdf, CircleNotch } from "@phosphor-icons/react";
+import { generatePdfReport } from "@/lib/pdfGenerator";
+import { ComparisonPdfTemplate } from "./PdfReportTemplate";
 
 function formatSignedMoney(value: number) {
   if (value === 0) return formatMoney(0);
@@ -20,6 +23,21 @@ export function EstimateComparisonReport({
   revFileName: string;
   onReset: () => void;
 }) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const pdfTemplateRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPdf = async () => {
+    if (!pdfTemplateRef.current) return;
+    setIsGeneratingPdf(true);
+    try {
+      await generatePdfReport(pdfTemplateRef.current, `сравнение_${origFileName}_и_${revFileName}`);
+    } catch (error) {
+      console.error("Failed to generate PDF comparison:", error);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -37,10 +55,11 @@ export function EstimateComparisonReport({
   const isBudgetSaved = delta < 0;
 
   return (
-    <motion.section
-      layout
-      className="print-report rounded-[2rem] border border-slate-200/50 bg-white p-6 shadow-sm md:p-8"
-    >
+    <>
+      <motion.section
+        layout
+        className="print-report rounded-[2rem] border border-slate-200/50 bg-white p-6 shadow-sm md:p-8"
+      >
       {/* Top Header Section */}
       <div className="flex flex-col gap-5 border-b border-zinc-100 pb-6 md:flex-row md:items-start md:justify-between">
         <div>
@@ -58,11 +77,33 @@ export function EstimateComparisonReport({
         </div>
         <div className="flex flex-col gap-3 sm:flex-row md:items-start">
           <motion.button
+            whileHover={{ scale: isGeneratingPdf ? 1 : 1.05 }}
+            whileTap={{ scale: isGeneratingPdf ? 1 : 0.95 }}
+            type="button"
+            disabled={isGeneratingPdf}
+            onClick={handleExportPdf}
+            className={`no-print inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer ${
+              isGeneratingPdf ? "bg-zinc-700 cursor-not-allowed" : "bg-zinc-950 hover:bg-zinc-800"
+            }`}
+          >
+            {isGeneratingPdf ? (
+              <>
+                <CircleNotch size={18} className="animate-spin" />
+                Создание PDF...
+              </>
+            ) : (
+              <>
+                <FilePdf size={18} weight="bold" />
+                Скачать PDF сравнения
+              </>
+            )}
+          </motion.button>
+          <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="button"
             onClick={onReset}
-            className="no-print inline-flex h-10 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="no-print inline-flex h-10 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
           >
             <Trash size={16} />
             Сбросить оба
@@ -225,5 +266,13 @@ export function EstimateComparisonReport({
         </div>
       </div>
     </motion.section>
+
+    {/* Hidden offscreen A4 container for html2canvas capturing */}
+    <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+      <div ref={pdfTemplateRef}>
+        <ComparisonPdfTemplate report={report} origFileName={origFileName} revFileName={revFileName} />
+      </div>
+    </div>
+  </>
   );
 }

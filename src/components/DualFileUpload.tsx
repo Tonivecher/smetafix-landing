@@ -284,6 +284,12 @@ export function DualFileUpload({
               </motion.button>
             )}
           </AnimatePresence>
+          <div className="text-center text-xs text-zinc-500 mt-1">
+            Или скачайте образец для сравнения:{" "}
+            <a href="/smetafix-landing/examples/smetafix-demo.xlsx" download className="text-emerald-600 hover:underline font-semibold">Excel (.xlsx)</a>
+            {" | "}
+            <a href="/smetafix-landing/examples/smetafix-demo.csv" download className="text-emerald-600 hover:underline font-semibold">CSV (.csv)</a>
+          </div>
         </div>
       </div>
     </motion.section>

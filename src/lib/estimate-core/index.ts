@@ -8,5 +8,6 @@ export * from "./types";
 export * from "./validators";
 export * from "./excelExport";
 export * from "./comparison";
+export * from "./history";
 
 
