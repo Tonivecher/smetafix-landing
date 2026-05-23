@@ -23,7 +23,7 @@ export function LandingClient() {
     origEstimate && revEstimate ? compareEstimates(origEstimate.lines, revEstimate.lines) : null;
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden bg-zinc-50 text-zinc-950">
+    <main className="min-h-screen w-full bg-zinc-50 text-zinc-950">
       <Header />
       <Hero
         activeTab={activeTab}

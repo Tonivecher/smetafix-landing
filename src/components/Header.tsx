@@ -9,10 +9,10 @@ export function Header() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 100, damping: 20 }}
-      className="fixed left-0 right-0 top-0 z-50 px-4 py-4 md:px-8 text-zinc-950"
+      className="fixed left-0 right-0 top-0 z-50 w-full border-b border-zinc-200/40 bg-white/80 py-4.5 px-6 md:px-12 text-zinc-950 backdrop-blur-xl shadow-sm"
     >
       <nav
-        className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-slate-200/50 bg-white/80 px-4 py-3 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] backdrop-blur-xl"
+        className="mx-auto flex max-w-7xl items-center justify-between"
         aria-label="Основная навигация"
       >
         <Link href="/" className="flex items-center gap-3 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500">
