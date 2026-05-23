@@ -19,7 +19,7 @@ const demoEstimateText = `Работа;Ед.;Кол.;Цена;Сумма
 Укладка керамогранита;м2;18;1900;34200
 Монтаж розеток и выключателей;шт;32;650;20000`;
 
-async function parseEstimateFile(file: File) {
+async function parseEstimateFile(file: File): Promise<ImportResult> {
   const fileName = file.name.toLowerCase();
 
   if (fileName.endsWith(".csv") || fileName.endsWith(".tsv") || fileName.endsWith(".txt")) {
@@ -27,9 +27,50 @@ async function parseEstimateFile(file: File) {
   }
 
   if (fileName.endsWith(".xlsx")) {
-    const { readSheet } = await import("read-excel-file/browser");
-    const rows = await readSheet(file);
-    return parseEstimateRows(rows);
+    const XLSX = await import("xlsx");
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+    let bestResult: ImportResult | null = null;
+    let maxLines = -1;
+    let selectedSheetName = "";
+
+    workbook.SheetNames.forEach((sheetName) => {
+      const ws = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
+      const result = parseEstimateRows(rows);
+      if (result.lines.length > maxLines) {
+        maxLines = result.lines.length;
+        bestResult = result;
+        selectedSheetName = sheetName;
+      }
+    });
+
+    if (bestResult && maxLines > 0) {
+       const resultObj = bestResult as ImportResult;
+       return {
+         ...resultObj,
+         issues: [
+           {
+             code: "sheet-autoselected",
+             severity: "info",
+             message: `Автоматически выбрана страница "${selectedSheetName}" (${maxLines} строк сметы).`,
+           },
+           ...resultObj.issues,
+         ],
+       };
+     }
+
+    return bestResult || {
+      lines: [],
+      issues: [
+        {
+          code: "no-estimate-sheet",
+          severity: "error",
+          message: "Не удалось найти таблицу сметы ни на одной из страниц файла.",
+        },
+      ],
+    };
   }
 
   return {

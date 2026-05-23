@@ -56,8 +56,9 @@ function findColumn(headers: string[], hints: string[]) {
 }
 
 function detectColumnMap(rows: unknown[][]): { map: ColumnMap; startIndex: number } | null {
-  for (let index = 0; index < Math.min(rows.length, 12); index += 1) {
-    const headers = rows[index].map(normalizeHeader);
+  for (let index = 0; index < Math.min(rows.length, 35); index += 1) {
+    const row = rows[index] || [];
+    const headers = row.map(normalizeHeader);
     const name = findColumn(headers, NAME_HINTS);
     const unit = findColumn(headers, UNIT_HINTS);
     const quantity = findColumn(headers, QUANTITY_HINTS);
@@ -134,14 +135,15 @@ export function parseEstimateRows(rows: unknown[][]): ImportResult {
   const lines: ImportedEstimateLine[] = [];
 
   rows.slice(detected.startIndex).forEach((row, rowIndex) => {
+    const safeRow = row || [];
     const sourceRowNumber = detected.startIndex + rowIndex + 1;
-    const name = normalizeCell(row[detected.map.name]);
-    const quantity = parseNumber(row[detected.map.quantity]);
-    const unitPriceKopecks = parseMoneyToKopecks(normalizeCell(row[detected.map.price]));
+    const name = normalizeCell(safeRow[detected.map.name]);
+    const quantity = parseNumber(safeRow[detected.map.quantity]);
+    const unitPriceKopecks = parseMoneyToKopecks(normalizeCell(safeRow[detected.map.price]));
     const declaredTotalKopecks =
       detected.map.total === undefined
         ? undefined
-        : parseMoneyToKopecks(normalizeCell(row[detected.map.total]));
+        : parseMoneyToKopecks(normalizeCell(safeRow[detected.map.total]));
 
     if (!name && quantity === 0 && unitPriceKopecks === 0) {
       return;
