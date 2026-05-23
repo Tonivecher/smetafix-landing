@@ -1,5 +1,5 @@
-import { SmetaAwwwards } from "@/components/SmetaLanding";
+import { LandingClient } from "@/components/LandingClient";
 
 export default function Home() {
-  return <SmetaAwwwards />;
+  return <LandingClient />;
 }
