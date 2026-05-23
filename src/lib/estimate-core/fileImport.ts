@@ -52,7 +52,7 @@ function splitTextRows(text: string): string[][] {
 }
 
 function findColumn(headers: string[], hints: string[]) {
-  return headers.findIndex((header) => hints.some((hint) => header.includes(hint)));
+  return headers.findIndex((header) => header && hints.some((hint) => header.includes(hint)));
 }
 
 function detectColumnMap(rows: unknown[][]): { map: ColumnMap; startIndex: number } | null {
