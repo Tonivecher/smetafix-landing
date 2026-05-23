@@ -22,10 +22,20 @@ body {
   color: var(--foreground);
   font-family: "Geist", "Aptos", "Segoe UI", Arial, sans-serif;
   text-rendering: geometricPrecision;
+  font-variant-numeric: tabular-nums;
 }
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 96px;
+}
+
+h1,
+h2,
+h3,
+p,
+summary {
+  text-wrap: pretty;
 }
 
 button,

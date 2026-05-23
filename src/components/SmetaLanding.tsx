@@ -76,7 +76,7 @@ function Header({ variant }: { variant: Variant }) {
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[#b98142] text-sm font-semibold text-[#1f211d]">
             SF
           </span>
-          <span className="text-sm font-semibold tracking-tight">SmetaFix</span>
+          <span className="text-sm font-semibold tracking-normal">SmetaFix</span>
         </Link>
         <div className="hidden items-center gap-6 text-sm md:flex">
           <a href="#process" className="rounded-full focus:outline-none focus:ring-2 focus:ring-[#b98142]">Как работает</a>
@@ -134,7 +134,7 @@ function EstimateTablePreview({ compact = false }: { compact?: boolean }) {
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-[620px] w-full text-left text-sm">
-          <thead className="bg-[#efe4d1] text-xs uppercase tracking-[0.14em] text-[#776d5f]">
+          <thead className="bg-[#efe4d1] text-xs uppercase tracking-normal text-[#776d5f]">
             <tr>
               {["Работа", "Ед.", "Кол.", "Цена", "Сумма"].map((item) => (
                 <th key={item} className="px-5 py-3 font-medium">{item}</th>
@@ -236,7 +236,7 @@ function FileUploadChecker({
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Загрузка и проверка</h2>
+            <h2 className="text-lg font-semibold tracking-normal">Загрузка и проверка</h2>
             <p className={`mt-1 text-sm ${dark ? "text-[#d8c9b0]" : "text-[#776d5f]"}`}>
               Загрузите свою смету, сервис прочитает строки и проверит суммы.
             </p>
@@ -361,9 +361,9 @@ function WorkflowSteps({ dark = false }: { dark?: boolean }) {
 
 function Pricing({ dark = false }: { dark?: boolean }) {
   return (
-    <section id="pricing" className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-32">
+    <section id="pricing" className="mx-auto max-w-7xl px-4 py-18 md:px-8 md:py-32">
       <div className="mb-10 max-w-3xl">
-        <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">Тарифы для разовой проверки и регулярной работы</h2>
+        <h2 className="text-3xl font-semibold tracking-normal md:text-5xl">Тарифы для разовой проверки и регулярной работы</h2>
         <p className={`mt-4 text-base leading-7 ${dark ? "text-[#d8c9b0]" : "text-[#776d5f]"}`}>
           Цены показаны как продуктовый ориентир MVP. Оплата и личный кабинет не реализованы в этом фронтенде.
         </p>
@@ -403,7 +403,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">{label}</span>
+      <span className="text-xs font-medium uppercase tracking-normal text-[#8f8068]">{label}</span>
       <span className="mt-2 flex min-h-12 items-center rounded-2xl border border-[#27231d]/10 bg-white px-4 text-[#27231d]">
         <input
           type="number"
@@ -509,11 +509,11 @@ function EstimateCalculatorPanel({
   const warnings = allIssues.filter((issue) => issue.severity !== "error");
 
   return (
-    <section id="calculator" className="mx-auto max-w-7xl px-4 py-14 md:px-8 md:py-20">
+    <section id="calculator" className="mx-auto max-w-7xl px-4 pb-14 pt-8 md:px-8 md:pb-20 md:pt-10">
       <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
         <div className="lg:sticky lg:top-28 lg:self-start">
-          <p className="font-mono text-sm uppercase tracking-[0.18em] text-[#b98142]">калькулятор проверки</p>
-          <h2 className="mt-5 text-3xl font-semibold tracking-tight md:text-5xl">
+          <p className="font-mono text-sm uppercase tracking-normal text-[#b98142]">калькулятор проверки</p>
+          <h2 className="mt-5 text-3xl font-semibold tracking-normal md:text-5xl">
             Сервис считает смету и сразу показывает, готова ли она к нужному формату
           </h2>
           <p className="mt-5 max-w-xl leading-7 text-[#d8c9b0]">
@@ -632,15 +632,15 @@ function EstimateCalculatorPanel({
                   <Field label="Сметная прибыль" value={estimatedProfitPercent} onChange={setEstimatedProfitPercent} suffix="%" />
                   <Field label="Индекс пересчёта" value={indexationCoefficient} onChange={setIndexationCoefficient} step={0.01} />
                   <label className="block">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">Регион</span>
+                    <span className="text-xs font-medium uppercase tracking-normal text-[#8f8068]">Регион</span>
                     <input value={region} onChange={(event) => setRegion(event.target.value)} className="mt-2 min-h-12 w-full rounded-2xl border border-[#27231d]/10 px-4 font-semibold outline-none focus:ring-2 focus:ring-[#b98142]" />
                   </label>
                   <label className="block">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">Уровень цен</span>
+                    <span className="text-xs font-medium uppercase tracking-normal text-[#8f8068]">Уровень цен</span>
                     <input value={priceLevel} onChange={(event) => setPriceLevel(event.target.value)} className="mt-2 min-h-12 w-full rounded-2xl border border-[#27231d]/10 px-4 font-semibold outline-none focus:ring-2 focus:ring-[#b98142]" />
                   </label>
                   <label className="block">
-                    <span className="text-xs font-medium uppercase tracking-[0.12em] text-[#8f8068]">Тип объекта</span>
+                    <span className="text-xs font-medium uppercase tracking-normal text-[#8f8068]">Тип объекта</span>
                     <input value={objectType} onChange={(event) => setObjectType(event.target.value)} className="mt-2 min-h-12 w-full rounded-2xl border border-[#27231d]/10 px-4 font-semibold outline-none focus:ring-2 focus:ring-[#b98142]" />
                   </label>
                 </div>
@@ -649,11 +649,11 @@ function EstimateCalculatorPanel({
 
             <div className="grid gap-3 rounded-[1.5rem] bg-[#27231d] p-5 text-[#f7eddc] sm:grid-cols-2">
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-[#d8c9b0]">До НДС</p>
+                <p className="text-xs uppercase tracking-normal text-[#d8c9b0]">До НДС</p>
                 <p className="mt-2 text-2xl font-semibold">{formatMoney(result.beforeVatKopecks)}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-[#d8c9b0]">Итого</p>
+                <p className="text-xs uppercase tracking-normal text-[#d8c9b0]">Итого</p>
                 <p className="mt-2 text-2xl font-semibold text-[#b98142]">{formatMoney(result.grandTotalKopecks)}</p>
               </div>
               <div className="sm:col-span-2 grid gap-2 border-t border-white/10 pt-4 text-sm text-[#d8c9b0] sm:grid-cols-3">
@@ -680,8 +680,8 @@ function EstimateCalculatorPanel({
 
 function FAQ({ dark = false }: { dark?: boolean }) {
   return (
-    <section id="faq" className="mx-auto max-w-5xl px-4 py-24 md:px-8 md:py-32">
-      <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">Коротко о важных ограничениях</h2>
+    <section id="faq" className="mx-auto max-w-5xl px-4 py-18 md:px-8 md:py-32">
+      <h2 className="text-3xl font-semibold tracking-normal md:text-5xl">Коротко о важных ограничениях</h2>
       <div className="mt-10 divide-y divide-current/10">
         {faq.map(([question, answer]) => (
           <details key={question} className="group py-6">
@@ -719,11 +719,11 @@ export function SmetaAwwwards() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_26%,rgba(185,129,66,0.28),transparent_34%),linear-gradient(180deg,rgba(31,33,29,0.34),#1f211d_82%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
           <div>
-            <h1 className="max-w-6xl text-[clamp(3rem,6vw,6.4rem)] font-semibold leading-[0.9] tracking-[-0.06em]">
-              Excel-смета без ручной боли и некрасивых PDF
+            <h1 className="max-w-5xl text-5xl font-semibold leading-[0.96] tracking-normal sm:text-6xl lg:text-7xl">
+              Проверка Excel-смет без ручного пересчёта
             </h1>
             <p className="mt-8 max-w-2xl text-lg leading-8 text-[#d8c9b0]">
-              Загрузите смету в Excel — SmetaFix проверит формулы, итоги, НДС и подготовит понятную клиентскую версию в PDF.
+              Загрузите смету — SmetaFix прочитает строки, сверит суммы, НДС и покажет, где расчёт расходится с таблицей.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a href="#calculator" className="grid min-h-12 place-items-center rounded-full bg-[#fbf7ec] px-6 py-3 text-sm font-semibold text-[#27231d] transition hover:bg-white active:translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#b98142]">
@@ -746,10 +746,10 @@ export function SmetaAwwwards() {
 
       <EstimateCalculatorPanel importedEstimate={importedEstimate} />
 
-      <section className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-24">
+      <section className="mx-auto max-w-7xl px-4 py-16 md:px-8 md:py-18">
         <div className="grid-flow-dense grid gap-4 md:grid-cols-6">
           <article className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-8 md:col-span-4">
-            <h2 className="max-w-4xl text-3xl font-semibold tracking-tight md:text-5xl">Сервис ловит ошибки, которые обычно замечают уже после отправки клиенту</h2>
+            <h2 className="max-w-4xl text-3xl font-semibold tracking-normal md:text-5xl">Сервис ловит ошибки, которые обычно замечают уже после отправки клиенту</h2>
             <div className="mt-10 grid gap-3 sm:grid-cols-2">
               {problems.map((item) => (
                 <p key={item} className="rounded-2xl border border-white/10 bg-black/10 p-4 text-[#d8c9b0]">{item}</p>
@@ -758,7 +758,7 @@ export function SmetaAwwwards() {
           </article>
           <article className="rounded-[2rem] border border-white/10 bg-[#b98142] p-8 text-[#1f211d] md:col-span-2">
             <p className="font-mono text-sm">итог проверки</p>
-            <p className="mt-10 text-5xl font-semibold tracking-tight">4 замечания</p>
+            <p className="mt-10 text-5xl font-semibold tracking-normal">4 замечания</p>
             <p className="mt-4 text-sm leading-6">арифметика, НДС, итог раздела и новые позиции во второй версии</p>
           </article>
           {features.slice(0, 3).map((item) => (
@@ -770,16 +770,16 @@ export function SmetaAwwwards() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-40" id="example">
+      <section className="mx-auto max-w-7xl px-4 py-18 md:px-8 md:py-28" id="example">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="lg:sticky lg:top-28 lg:self-start">
-            <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">До отправки клиенту видно, где смета расходится</h2>
+            <h2 className="text-3xl font-semibold tracking-normal md:text-5xl">До отправки клиенту видно, где смета расходится</h2>
             <p className="mt-5 text-[#d8c9b0]">Рабочая таблица остаётся для команды, а клиент получает аккуратный PDF с понятными разделами.</p>
           </div>
           <div className="space-y-6">
             <EstimateTablePreview />
             <div className="rounded-[2rem] border border-white/10 bg-[#f7eddc] p-6 text-[#27231d]">
-              <h3 className="text-2xl font-semibold tracking-tight">Клиентская версия PDF</h3>
+              <h3 className="text-2xl font-semibold tracking-normal">Клиентская версия PDF</h3>
               <div className="mt-6 space-y-3">
                 {["Работы по подготовке", "Черновая отделка", "Чистовая отделка", "Электрика"].map((item, index) => (
                   <div key={item} className="flex items-center justify-between border-b border-[#27231d]/10 pb-3">
@@ -793,13 +793,13 @@ export function SmetaAwwwards() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-32">
+      <section className="mx-auto max-w-7xl px-4 py-18 md:px-8 md:py-32">
         <WorkflowSteps dark />
       </section>
       <Pricing dark />
-      <section className="mx-auto max-w-7xl px-4 py-24 md:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-18 md:px-8">
         <div className="rounded-[2.5rem] bg-[#f7eddc] p-8 text-[#27231d] md:p-14">
-          <h2 className="max-w-4xl text-4xl font-semibold tracking-tight md:text-6xl">Проверьте смету до того, как она станет спором</h2>
+          <h2 className="max-w-4xl text-4xl font-semibold tracking-normal md:text-6xl">Проверьте смету до того, как она станет спором</h2>
           <p className="mt-6 max-w-2xl text-[#776d5f]">Файлы передаются по HTTPS, могут быть удалены вручную и автоматически очищаются через 1–24 часа.</p>
           <div className="mt-8"><CTAButton>Проверить смету</CTAButton></div>
         </div>
@@ -819,7 +819,7 @@ export function SmetaMinimal() {
       <section className="min-h-[100dvh] px-4 pb-16 pt-32 md:px-8 md:pt-36">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
           <div>
-            <h1 className="max-w-5xl text-[clamp(2.8rem,5vw,5.6rem)] font-semibold leading-[0.95] tracking-[-0.055em]">
+            <h1 className="max-w-5xl text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-semibold leading-[0.95] tracking-normal">
               Проверьте смету перед отправкой заказчику
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#776d5f]">
@@ -846,7 +846,7 @@ export function SmetaMinimal() {
             <EstimateTablePreview compact />
           </div>
           <aside className="rounded-[1.75rem] border border-[#27231d]/10 bg-[#fbf7ec] p-6 lg:col-span-5">
-            <h2 className="text-2xl font-semibold tracking-tight">Отчёт об ошибках</h2>
+            <h2 className="text-2xl font-semibold tracking-normal">Отчёт об ошибках</h2>
             <div className="mt-6 space-y-3">
               {errorExamples.map((item) => (
                 <div key={item} className="flex gap-3 rounded-2xl border border-[#27231d]/10 bg-white p-3 text-sm">
@@ -861,7 +861,7 @@ export function SmetaMinimal() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 md:px-8">
         <div className="mb-8 max-w-3xl">
-          <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">Всё, что обычно проверяют вручную</h2>
+          <h2 className="text-3xl font-semibold tracking-normal md:text-5xl">Всё, что обычно проверяют вручную</h2>
           <p className="mt-4 text-[#776d5f]">Функции сгруппированы вокруг реальной работы подрядчика, сметчика и малого строительного бизнеса.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
