@@ -170,6 +170,7 @@ export function parseEstimateRows(rows: unknown[][]): ImportResult {
   }
 
   const lines: ImportedEstimateLine[] = [];
+  let currentSection: string | undefined = undefined;
 
   rows.slice(detected.startIndex).forEach((row, rowIndex) => {
     const safeRow = row || [];
@@ -207,6 +208,9 @@ export function parseEstimateRows(rows: unknown[][]): ImportResult {
     }
 
     if (quantity === 0 && unitPriceKopecks === 0) {
+      if (name) {
+        currentSection = name;
+      }
       return;
     }
 
@@ -231,6 +235,7 @@ export function parseEstimateRows(rows: unknown[][]): ImportResult {
       calculatedTotalKopecks,
       differenceKopecks,
       differenceSeverity,
+      section: currentSection,
     };
 
     lines.push(line);

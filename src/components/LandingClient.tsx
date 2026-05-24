@@ -11,8 +11,10 @@ import {
   getHistory,
   saveToHistory,
   deleteFromHistory,
+  runEstimateAnalytics,
   type HistoryItem,
 } from "@/lib/estimate-core";
+import { AnalyticsPanel } from "./AnalyticsPanel";
 import type { ImportedEstimate } from "./FileUploadChecker";
 
 export function LandingClient() {
@@ -145,7 +147,20 @@ export function LandingClient() {
       />
 
       {activeTab === "audit" ? (
-        <EstimateCalculatorPanel importedEstimate={importedEstimate} />
+        <>
+          <EstimateCalculatorPanel importedEstimate={importedEstimate} />
+          {importedEstimate && importedEstimate.lines.length > 0 && (
+            <div className="px-4 pb-14 pt-2 md:px-8 md:pb-24">
+              <AnalyticsPanel
+                analytics={runEstimateAnalytics(importedEstimate.lines)}
+                linesMap={importedEstimate.lines.reduce((acc, line) => {
+                  acc[line.id] = line;
+                  return acc;
+                }, {} as Record<string, typeof importedEstimate.lines[0]>)}
+              />
+            </div>
+          )}
+        </>
       ) : (
         comparisonReport && (
           <section id="comparison-report" className="mx-auto max-w-7xl px-4 pb-14 pt-8 md:px-8 md:pb-24">

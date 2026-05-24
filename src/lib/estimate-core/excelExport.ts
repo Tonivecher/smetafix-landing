@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { formatMoney } from "./money";
 import type { ImportedEstimateLine } from "./types";
+import { runEstimateAnalytics } from "./analytics";
 
 export function exportCorrectedEstimate(
   fileName: string,
@@ -92,9 +93,71 @@ export function exportCorrectedEstimate(
   ];
   ws["!cols"] = cols;
 
-  // Create workbook and append sheet
+  // Create workbook
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Результаты аудита");
+
+  // --- ANALYTICS SHEET GENERATION ---
+  const analytics = runEstimateAnalytics(lines);
+  const classAPercent = grandTotalKopecks > 0 
+    ? ((analytics.metrics.classACostKopecks / grandTotalKopecks) * 100).toFixed(1) 
+    : "0";
+
+  const analyticsRows: (string | number | null)[][] = [
+    ["АНАЛИТИКА БЮДЖЕТА И РЕКОМЕНДАЦИИ ПО ОПТИМИЗАЦИИ (SmetaFix)"],
+    ["Исходный файл:", cleanFileName],
+    ["Дата проверки:", new Date().toLocaleDateString("ru-RU")],
+    [],
+    ["ОСНОВНЫЕ ПОКАЗАТЕЛИ БЮДЖЕТА"],
+    ["Общий расчетный бюджет сметы (без наценок):", analytics.metrics.totalBudgetKopecks / 100, "₽"],
+    ["Стоимость позиций класса А (высокий приоритет):", analytics.metrics.classACostKopecks / 100, "₽", `(${classAPercent}% бюджета)`],
+    ["Количество позиций класса А:", analytics.metrics.classACount, "шт"],
+    ["Средняя расчетная стоимость строки:", analytics.metrics.averageLineCostKopecks / 100, "₽"],
+    [],
+    ["СТОИМОСТЬ ПО РАЗДЕЛАМ СМЕТЫ"],
+    ["Раздел сметы", "Количество позиций", "Сумма раздела (₽)", "Доля (%)"]
+  ];
+
+  // Populate sections
+  analytics.sectionsBreakdown.forEach((sec) => {
+    analyticsRows.push([
+      sec.name,
+      sec.itemCount,
+      sec.totalKopecks / 100,
+      sec.percent / 100 // SheetJS will format it beautifully
+    ]);
+  });
+
+  analyticsRows.push([]);
+  analyticsRows.push(["ВЫЯВЛЕННЫЕ ТОЧКИ ОПТИМИЗАЦИИ И СОВЕТЫ"]);
+  analyticsRows.push(["Позиция сметы", "Тип аномалии", "Уровень важности", "Рекомендация по оптимизации"]);
+
+  // Populate anomalies
+  if (analytics.anomalies.length === 0) {
+    analyticsRows.push(["Отклонений и сильных перекосов стоимости не обнаружено", "", "", "Все цены находятся в пределах нормальных средних уровней."]);
+  } else {
+    analytics.anomalies.forEach((anom) => {
+      analyticsRows.push([
+        anom.lineName,
+        anom.type === "high_concentration" ? "Концентрация затрат" : "Аномальная цена",
+        anom.severity === "critical" ? "Критическая зона" : "Внимание",
+        anom.message
+      ]);
+    });
+  }
+
+  const wsAnalytics = XLSX.utils.aoa_to_sheet(analyticsRows);
+
+  // Set column widths for analytics sheet
+  const analyticsCols = [
+    { wch: 45 }, // Показатель / Раздел / Позиция
+    { wch: 22 }, // Значение / Кол-во / Тип аномалии
+    { wch: 18 }, // Валюта / Сумма / Уровень важности
+    { wch: 65 }  // Доля / Рекомендация
+  ];
+  wsAnalytics["!cols"] = analyticsCols;
+
+  XLSX.utils.book_append_sheet(wb, wsAnalytics, "Аналитика бюджета");
 
   // Write file
   const wbout = XLSX.write(wb, { bookType: "xlsx", type: "binary" });

@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { formatMoney } from "@/lib/estimate-core";
-import { CheckCircle, Warning, Info, Lightbulb, ArrowsClockwise, FileText } from "@phosphor-icons/react";
+import { formatMoney, runEstimateAnalytics } from "@/lib/estimate-core";
+import { CheckCircle, Warning, Info, Lightbulb, ArrowsClockwise, FileText, ChartBar } from "@phosphor-icons/react";
 import type { CheckReport, ComparisonReport, ImportedEstimateLine } from "@/lib/estimate-core/types";
 
 function formatSignedMoney(value: number) {
@@ -237,6 +237,104 @@ export function SingleAuditPdfTemplate({
           </div>
         </div>
       </div>
+
+      {/* PAGE 2: BUDGET ANALYTICS & OPTIMIZATION */}
+      {(() => {
+        const analytics = runEstimateAnalytics(lines);
+        const classAPercent = summary.grandTotalKopecks > 0 
+          ? ((analytics.metrics.classACostKopecks / summary.grandTotalKopecks) * 100).toFixed(1) 
+          : "0";
+
+        return (
+          <div className="border-t border-dashed border-zinc-200 pt-10 mt-10 flex flex-col gap-6" style={{ minHeight: "1000px" }}>
+            {/* Page 2 Title */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ChartBar size={22} className="text-emerald-500" />
+                <div>
+                  <span className="font-mono text-xs uppercase tracking-[0.25em] text-emerald-500">SmetaFix Analytics</span>
+                  <h2 className="text-sm font-semibold text-zinc-600">Анализ структуры бюджета и советы по оптимизации</h2>
+                </div>
+              </div>
+              <span className="text-xs text-zinc-400 font-medium">Страница 2</span>
+            </div>
+
+            {/* Analytics Summary Banner */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Всего разделов", value: analytics.sectionsBreakdown.length, sub: "группировка по строкам" },
+                { label: "Позиций класса А", value: analytics.metrics.classACount, sub: `${classAPercent}% бюджета сметы` },
+                { label: "Средняя стоимость работы", value: formatMoney(analytics.metrics.averageLineCostKopecks), sub: "по всем строкам" },
+              ].map((m, idx) => (
+                <div key={idx} className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4 h-20 flex flex-col justify-between">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-400">{m.label}</span>
+                  <div>
+                    <span className="block font-mono text-sm font-bold text-zinc-900 mt-0.5">{m.value}</span>
+                    <span className="block text-[9px] text-zinc-500">{m.sub}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sections Breakdown Grid */}
+            <div className="rounded-2xl border border-zinc-100 overflow-hidden">
+              <div className="bg-zinc-50 border-b border-zinc-100 px-4 py-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Сметная стоимость по разделам</h4>
+              </div>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-100 text-[10px] uppercase font-bold text-zinc-400 bg-zinc-50/50">
+                    <th className="px-4 py-2">Сметный раздел</th>
+                    <th className="px-4 py-2 w-20 text-center">Строк</th>
+                    <th className="px-4 py-2 w-32 text-right">Сумма раздела</th>
+                    <th className="px-4 py-2 w-24 text-right">Доля в %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {analytics.sectionsBreakdown.slice(0, 10).map((sec, idx) => (
+                    <tr key={idx} className="hover:bg-zinc-50/30">
+                      <td className="px-4 py-2.5 font-semibold text-zinc-800 truncate max-w-[320px]">{sec.name}</td>
+                      <td className="px-4 py-2.5 text-zinc-500 text-center">{sec.itemCount}</td>
+                      <td className="px-4 py-2.5 font-mono text-zinc-900 text-right">{formatMoney(sec.totalKopecks)}</td>
+                      <td className="px-4 py-2.5 font-mono font-bold text-zinc-900 text-right">{sec.percent}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Budget Anomalies and Warnings */}
+            <div className="rounded-2xl border border-zinc-100 p-5 bg-zinc-50/10">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-4 flex items-center gap-1.5">
+                <Warning size={16} className="text-red-500" /> Выявленные точки оптимизации бюджета
+              </h4>
+              <div className="flex flex-col gap-3">
+                {analytics.anomalies.length === 0 ? (
+                  <p className="text-xs text-zinc-500 italic">Специфических отклонений стоимости и сильных перекосов бюджета не обнаружено.</p>
+                ) : (
+                  analytics.anomalies.slice(0, 4).map((anom, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border flex gap-3 ${anom.severity === "critical" ? "border-red-100 bg-red-50/40" : "border-amber-100 bg-amber-50/40"}`}>
+                      <div className="mt-0.5 shrink-0">
+                        {anom.severity === "critical" ? <Warning size={16} className="text-red-500" /> : <Info size={16} className="text-amber-500" />}
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-zinc-900">{anom.lineName}</h5>
+                        <p className="text-[11px] text-zinc-600 mt-1 leading-relaxed">{anom.message}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Footer Info */}
+            <div className="border-t border-zinc-100 pt-4 flex justify-between items-center text-[10px] text-zinc-400 mt-auto">
+              <span>Анализ сметных концентраций SmetaFix Core Analytics v1.0</span>
+              <span>Дата выгрузки: {new Date().toLocaleDateString("ru-RU")}</span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

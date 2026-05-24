@@ -9,5 +9,6 @@ export * from "./validators";
 export * from "./excelExport";
 export * from "./comparison";
 export * from "./history";
+export * from "./analytics";
 
 

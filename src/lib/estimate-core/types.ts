@@ -41,6 +41,7 @@ export type EstimateLineInput = {
   quantity: number;
   unitPriceKopecks: number;
   declaredTotalKopecks?: number;
+  section?: string;
 };
 
 export type ImportedEstimateLine = EstimateLineInput & {
@@ -48,6 +49,36 @@ export type ImportedEstimateLine = EstimateLineInput & {
   calculatedTotalKopecks: number;
   differenceKopecks?: number;
   differenceSeverity?: DifferenceSeverity;
+};
+
+export type AbcClass = "A" | "B" | "C";
+
+export type SectionCostBreakdown = {
+  name: string;
+  totalKopecks: number;
+  percent: number;
+  itemCount: number;
+};
+
+export type BudgetAnomaly = {
+  lineId: string;
+  lineName: string;
+  type: "high_concentration" | "anomalous_price" | "price_surge";
+  severity: "critical" | "warning" | "info";
+  message: string;
+  impactPercent: number;
+};
+
+export type EstimateAnalyticsResult = {
+  abcClasses: Record<string, AbcClass>;
+  sectionsBreakdown: SectionCostBreakdown[];
+  anomalies: BudgetAnomaly[];
+  metrics: {
+    totalBudgetKopecks: number;
+    classACostKopecks: number;
+    classACount: number;
+    averageLineCostKopecks: number;
+  };
 };
 
 export type EstimateMetadata = {

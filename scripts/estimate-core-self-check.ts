@@ -136,5 +136,39 @@ assertEqual(comparison.lines.find(l => l.name.includes("Демонтаж"))?.cha
 assertEqual(comparison.lines.find(l => l.name.includes("Штукатурка"))?.changeType, "removed", "comparison line removed");
 assertEqual(comparison.lines.find(l => l.name.includes("Покраска"))?.changeType, "added", "comparison line added");
 
+// Analytics tests
+import { runEstimateAnalytics } from "../src/lib/estimate-core";
+
+const parsedAnalytics = parseEstimateText(`Работа;Ед.;Кол.;Цена;Сумма
+Раздел 1;;;;
+Работа 1;шт;10;1000;10000
+Работа 2;шт;2;500;1000
+Раздел 2;;;;
+Работа 3;м2;1;50000;50000`);
+
+assertEqual(parsedAnalytics.lines.length, 3, "analytics lines length");
+assertEqual(parsedAnalytics.lines[0].section, "Раздел 1", "analytics section 1 name");
+assertEqual(parsedAnalytics.lines[1].section, "Раздел 1", "analytics section 1 name 2");
+assertEqual(parsedAnalytics.lines[2].section, "Раздел 2", "analytics section 2 name");
+
+const analyticsResult = runEstimateAnalytics(parsedAnalytics.lines);
+
+// Metrics
+assertEqual(analyticsResult.metrics.totalBudgetKopecks, 6_100_000, "analytics total budget"); // 10000 + 1000 + 50000 = 61000
+assertEqual(analyticsResult.abcClasses[parsedAnalytics.lines[2].id], "A", "analytics ABC class for Работа 3"); // 50000 is 81.9% of budget
+assertEqual(analyticsResult.abcClasses[parsedAnalytics.lines[0].id], "B", "analytics ABC class for Работа 1");
+assertEqual(analyticsResult.abcClasses[parsedAnalytics.lines[1].id], "C", "analytics ABC class for Работа 2");
+
+// Sections Breakdown
+assertEqual(analyticsResult.sectionsBreakdown.length, 2, "analytics sections count");
+assertEqual(analyticsResult.sectionsBreakdown[0].name, "Раздел 2", "analytics section cost breakdown descending 1");
+assertEqual(analyticsResult.sectionsBreakdown[0].totalKopecks, 5_000_000, "analytics section cost total");
+assertEqual(analyticsResult.sectionsBreakdown[1].name, "Раздел 1", "analytics section cost breakdown descending 2");
+
+// Anomalies
+assertEqual(analyticsResult.anomalies.length > 0, true, "analytics anomalies count");
+assertEqual(analyticsResult.anomalies[0].type, "high_concentration", "analytics critical concentration anomaly");
+assertEqual(analyticsResult.anomalies[0].lineName, "Работа 3", "analytics anomaly target");
+
 console.log("estimate-core self-check and comparison tests passed");
 
