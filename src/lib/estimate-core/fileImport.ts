@@ -6,8 +6,8 @@ type ColumnMap = {
   name: number;
   unit: number;
   quantity: number;
-  price: number;
-  total?: number;
+  priceColumns: number[];
+  totalColumns?: number[];
 };
 
 const NAME_HINTS = ["работ", "наимен", "пози", "материал", "услуг"];
@@ -66,13 +66,50 @@ function detectColumnMap(rows: unknown[][]): { map: ColumnMap; startIndex: numbe
     const total = findColumn(headers, TOTAL_HINTS);
 
     if (name >= 0 && quantity >= 0 && price >= 0) {
+      // Find non-empty header indexes in this row
+      const nonEmptyIndexes: number[] = [];
+      headers.forEach((h, i) => {
+        if (h !== "") {
+          nonEmptyIndexes.push(i);
+        }
+      });
+
+      // Helper function to find all column indexes in the header's span
+      const getSpan = (colIndex: number): number[] => {
+        const start = colIndex;
+        const nextHeaderIdx = nonEmptyIndexes.find(idx => idx > colIndex);
+        const end = nextHeaderIdx !== undefined ? nextHeaderIdx - 1 : headers.length - 1;
+        const cols: number[] = [];
+        for (let c = start; c <= end; c++) {
+          cols.push(c);
+        }
+        return cols;
+      };
+
+      const priceColumns = getSpan(price);
+      const totalColumns = total >= 0 ? getSpan(total) : undefined;
+
+      // If there are other headers matching total hints, merge their columns (e.g. 'Стоимость' + 'Итого')
+      if (total >= 0) {
+        headers.forEach((h, i) => {
+          if (i !== total && h !== "" && TOTAL_HINTS.some(hint => h.includes(hint))) {
+            const extraSpan = getSpan(i);
+            extraSpan.forEach(c => {
+              if (totalColumns && !totalColumns.includes(c)) {
+                totalColumns.push(c);
+              }
+            });
+          }
+        });
+      }
+
       return {
         map: {
           name,
           unit: unit >= 0 ? unit : name + 1,
           quantity,
-          price,
-          total: total >= 0 ? total : undefined,
+          priceColumns,
+          totalColumns,
         },
         startIndex: index + 1,
       };
@@ -108,8 +145,8 @@ function fallbackColumnMap(rows: unknown[][]): { map: ColumnMap; startIndex: num
       name: 0,
       unit: 1,
       quantity: 2,
-      price: 3,
-      total: 4,
+      priceColumns: [3],
+      totalColumns: [4],
     },
     startIndex: firstDataRow,
   };
@@ -139,13 +176,37 @@ export function parseEstimateRows(rows: unknown[][]): ImportResult {
     const sourceRowNumber = detected.startIndex + rowIndex + 1;
     const name = normalizeCell(safeRow[detected.map.name]);
     const quantity = parseNumber(safeRow[detected.map.quantity]);
-    const unitPriceKopecks = parseMoneyToKopecks(normalizeCell(safeRow[detected.map.price]));
-    const declaredTotalKopecks =
-      detected.map.total === undefined
-        ? undefined
-        : parseMoneyToKopecks(normalizeCell(safeRow[detected.map.total]));
+    let unitPriceKopecks = 0;
+    detected.map.priceColumns.forEach((col) => {
+      const valStr = normalizeCell(safeRow[col]);
+      if (valStr) {
+        const val = parseMoneyToKopecks(valStr);
+        if (val > 0) {
+          unitPriceKopecks += val;
+        }
+      }
+    });
 
-    if (!name && quantity === 0 && unitPriceKopecks === 0) {
+    let declaredTotalKopecks: number | undefined = undefined;
+    if (detected.map.totalColumns && detected.map.totalColumns.length > 0) {
+      let sumTotal = 0;
+      let hasValue = false;
+      detected.map.totalColumns.forEach((col) => {
+        const valStr = normalizeCell(safeRow[col]);
+        if (valStr) {
+          const val = parseMoneyToKopecks(valStr);
+          if (val > 0) {
+            sumTotal += val;
+            hasValue = true;
+          }
+        }
+      });
+      if (hasValue) {
+        declaredTotalKopecks = sumTotal;
+      }
+    }
+
+    if (quantity === 0 && unitPriceKopecks === 0) {
       return;
     }
 
